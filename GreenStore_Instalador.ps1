@@ -1,7 +1,23 @@
 # ==============================
-# Green Store - Instalador de Correção
+# Instalador Green Store
 # ==============================
 $Host.UI.RawUI.WindowTitle = "Green Store | Instalador de Correção do Steam"
+
+# Banner ASCII Art
+Clear-Host
+Write-Host @"
+  ██████╗ ██████╗ ███████╗███████╗███╗   ██╗
+ ██╔════╝ ██╔══██╗██╔════╝██╔════╝████╗  ██║
+ ██║  ███╗██████╔╝█████╗  █████╗  ██╔██╗ ██║
+ ██║   ██║██╔══██╗██╔══╝  ██╔══╝  ██║╚██╗██║
+ ╚██████╔╝██║  ██║███████╗███████╗██║ ╚████║
+  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝
+         S T O R E
+==========================================
+   Instalador Oficial - Green Store
+==========================================
+"@ -ForegroundColor Green
+Write-Host ""
 
 # ===================== SISTEMA DE LOG =====================
 function Registrar {
@@ -11,66 +27,56 @@ function Registrar {
         [boolean]$SemNovaLinha = $false
     )
     $Tipo = $Tipo.ToUpper()
-    $cor = switch ($Tipo) {
-        "OK"      { "Green" }
-        "INFO"    { "Cyan" }
-        "ERRO"    { "Red" }
-        "AVISO"   { "Yellow" }
-        "LOG"     { "Magenta" }
-        default   { "White" }
+    $color = switch ($Tipo) {
+        "OK"    { "Green" }
+        "INFO"  { "Cyan" }
+        "ERRO"  { "Red" }
+        "AVISO" { "Yellow" }
+        "LOG"   { "Magenta" }
+        default { "White" }
     }
-    $hora = Get-Date -Format "HH:mm:ss"
-    $prefixo = if ($SemNovaLinha) { "`r[$hora] " } else { "[$hora] " }
-    Write-Host $prefixo -ForegroundColor Cyan -NoNewline
-    Write-Host "[$Tipo] $Mensagem" -ForegroundColor $cor -NoNewline:$SemNovaLinha
-}
+    
+    # Mapeamento visual das tags de log pedidas
+    $Tag = switch ($Tipo) {
+        "OK"    { "[OK]" }
+        "INFO"  { "[INFO]" }
+        "ERRO"  { "[ERRO]" }
+        "AVISO" { "[AVISO]" }
+        "LOG"   { "[LOG]" }
+        default { "[$Tipo]" }
+    }
 
-# ===================== BANNER DA GREEN STORE =====================
-Write-Host ""
-Write-Host "  ██████╗ ██████╗ ███████╗███████╗███╗   ██╗" -ForegroundColor Green
-Write-Host " ██╔════╝ ██╔══██╗██╔════╝██╔════╝████╗  ██║" -ForegroundColor Green
-Write-Host " ██║  ███╗██████╔╝█████╗  █████╗  ██╔██╗ ██║" -ForegroundColor Green
-Write-Host " ██║   ██║██╔══██╗██╔══╝  ██╔══╝  ██║╚██╗██║" -ForegroundColor Green
-Write-Host " ╚██████╔╝██║  ██║███████╗███████╗██║ ╚████║" -ForegroundColor Green
-Write-Host "  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═══╝" -ForegroundColor Green
-Write-Host ""
-Write-Host "        S T O R E" -ForegroundColor DarkGreen
-Write-Host ""
-Write-Host " ==========================================" -ForegroundColor DarkGreen
-Write-Host "   Instalador Oficial - Green Store" -ForegroundColor White
-Write-Host " ==========================================" -ForegroundColor DarkGreen
-Write-Host ""
+    $date = Get-Date -Format "HH:mm:ss"
+    $prefix = if ($SemNovaLinha) { "`r[$date] " } else { "[$date] " }
+    Write-Host $prefix -ForegroundColor Cyan -NoNewline
+    Write-Host "$Tag $Mensagem" -ForegroundColor $color -NoNewline:$SemNovaLinha
+}
 
 # ===================== DETECÇÃO DO STEAM =====================
 Registrar "INFO" "Procurando instalação do Steam..."
 
 function Encontrar-CaminhoSteam {
     $CaminhosPossiveis = @()
-
     try {
-        $registro = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
-        if ($registro.InstallPath) { $CaminhosPossiveis += $registro.InstallPath }
+        $reg = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Valve\Steam" -ErrorAction SilentlyContinue
+        if ($reg.InstallPath) { $CaminhosPossiveis += $reg.InstallPath }
     } catch {}
-
+   
     try {
-        $registro = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
-        if ($registro.SteamPath) { $CaminhosPossiveis += $registro.SteamPath -replace '\\\\', '\' }
+        $reg = Get-ItemProperty -Path "HKCU:\Software\Valve\Steam" -ErrorAction SilentlyContinue
+        if ($reg.SteamPath) { $CaminhosPossiveis += $reg.SteamPath -replace '\\\\', '\' }
     } catch {}
-
+   
     $CaminhoPadrao = "C:\Program Files (x86)\Steam"
     if (Test-Path $CaminhoPadrao) { $CaminhosPossiveis += $CaminhoPadrao }
-
+   
     $CaminhosPossiveis = $CaminhosPossiveis | Select-Object -Unique | Where-Object { Test-Path $_ }
-
+   
     if ($CaminhosPossiveis.Count -eq 0) {
         Registrar "ERRO" "Instalação do Steam não encontrada. Por favor, instale o Steam primeiro."
-        Write-Host ""
-        Write-Host " Baixe o Steam em: https://store.steampowered.com/about/" -ForegroundColor Yellow
-        Write-Host ""
-        Read-Host " Pressione ENTER para sair"
         exit 1
     }
-
+   
     $CaminhoSteam = $CaminhosPossiveis[0]
     Registrar "OK" "Steam encontrado em: $CaminhoSteam"
     return $CaminhoSteam
@@ -78,7 +84,7 @@ function Encontrar-CaminhoSteam {
 
 $steam = Encontrar-CaminhoSteam
 
-# ===================== FECHAR O STEAM =====================
+# ===================== FECHAR STEAM =====================
 Registrar "INFO" "Encerrando o Steam, aguarde..."
 Get-Process -Name "steam" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 3
@@ -87,99 +93,87 @@ Write-Host ""
 # ===================== DOWNLOAD DOS ARQUIVOS =====================
 Registrar "INFO" "Buscando os arquivos mais recentes da Green Store..."
 
-$UrlApi = "https://api.github.com/repos/GREENSTORE00/Corre-o-de-Bugs/releases/latest"
-$ArquivoCLI = Join-Path $env:TEMP "GreenStoreCLI.exe"
-$ArquivoDLL = Join-Path $env:TEMP "cloud_redirect.dll"
+$ApiUrl = "https://api.github.com/repos/Selectively11/CloudRedirect/releases/latest"
+$CliFile = Join-Path $env:TEMP "GreenStoreCLI.exe"
+$DllFile = Join-Path $env:TEMP "cloud_redirect.dll"
 
 try {
-    $Release = Invoke-RestMethod -Uri $UrlApi -UseBasicParsing -ErrorAction Stop
+    $Release = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing -ErrorAction Stop
     Registrar "LOG" "Versão mais recente: $($Release.tag_name)"
 
-    # Download do GreenStoreCLI.exe
-    $AssetCLI = $Release.assets | Where-Object { $_.name -eq "GreenStoreCLI.exe" } | Select-Object -First 1
-    if ($AssetCLI) {
+    # Download GreenStoreCLI.exe
+    $CliAsset = $Release.assets | Where-Object { $_.name -eq "CloudRedirectCLI.exe" } | Select-Object -First 1
+    if ($CliAsset) {
         Registrar "LOG" "Baixando GreenStoreCLI.exe..."
-        Invoke-WebRequest -Uri $AssetCLI.browser_download_url -OutFile $ArquivoCLI -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
+        Invoke-WebRequest -Uri $CliAsset.browser_download_url -OutFile $CliFile -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
         Registrar "OK" "GreenStoreCLI.exe baixado com sucesso"
-    } else {
-        Registrar "AVISO" "Arquivo GreenStoreCLI.exe não encontrado na release"
     }
 
-    # Download do greenstore_patch.dll
-    $AssetDLL = $Release.assets | Where-Object { $_.name -eq "greenstore_patch.dll" } | Select-Object -First 1
-    if ($AssetDLL) {
-        Registrar "LOG" "Baixando greenstore_patch.dll..."
-        Invoke-WebRequest -Uri $AssetDLL.browser_download_url -OutFile $ArquivoDLL -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
-        Registrar "OK" "greenstore_patch.dll baixado com sucesso"
-    } else {
-        Registrar "AVISO" "Arquivo greenstore_patch.dll não encontrado na release"
+    # Download cloud_redirect.dll
+    $DllAsset = $Release.assets | Where-Object { $_.name -eq "cloud_redirect.dll" } | Select-Object -First 1
+    if ($DllAsset) {
+        Registrar "LOG" "Baixando cloud_redirect.dll..."
+        Invoke-WebRequest -Uri $DllAsset.browser_download_url -OutFile $DllFile -UseBasicParsing -TimeoutSec 60 -ErrorAction Stop
+        Registrar "OK" "cloud_redirect.dll baixado com sucesso"
     }
 }
 catch {
     Registrar "ERRO" "Falha ao baixar os arquivos mais recentes"
     Registrar "ERRO" $_.Exception.Message
-    Write-Host ""
-    Write-Host " Entre em contato com o suporte da Green Store." -ForegroundColor Yellow
-    Write-Host ""
-    Read-Host " Pressione ENTER para sair"
     exit 1
 }
 
-# ===================== EXECUTAR O CORRETOR =====================
+# ===================== EXECUTAR FIXER =====================
 for ($i = 5; $i -ge 1; $i--) {
-    Registrar "INFO" "Iniciando o Corretor da Green Store em $i segundo$(if($i -gt 1){'s'})..." $true
+    $sufixo = if($i -gt 1){'s'} else {''}
+    Registrar "INFO" "Iniciando o Corretor da Green Store em $i segundo$sufixo..." $true
     Start-Sleep -Seconds 1
 }
 Write-Host ""
 
 Registrar "INFO" "Executando o Corretor da Green Store..."
 try {
-    & $ArquivoCLI /stfixer
+    & $CliFile /stfixer
     Registrar "OK" "Corretor executado com sucesso"
 }
 catch {
-    Registrar "ERRO" "Erro ao executar o Corretor"
+    Registrar "ERRO" "Erro ao executar o Corretor da Green Store"
     Registrar "ERRO" $_.Exception.Message
 }
 
-# ===================== INSTALAR A DLL =====================
-Registrar "INFO" "Instalando greenstore_patch.dll na pasta do Steam..."
-$DllDestino = Join-Path $steam "cloud_redirect.dll"
+# ===================== INSTALAR DLL =====================
+Registrar "INFO" "Instalando dll na pasta do Steam..."
+$TargetDll = Join-Path $steam "cloud_redirect.dll"
 
 try {
-    Copy-Item -Path $ArquivoDLL -Destination $DllDestino -Force -ErrorAction Stop
-    Registrar "OK" "greenstore_patch.dll instalada com sucesso"
+    Copy-Item -Path $DllFile -Destination $TargetDll -Force -ErrorAction Stop
+    Registrar "OK" "dll instalada com sucesso"
 }
 catch {
-    Registrar "ERRO" "Falha ao copiar greenstore_patch.dll"
+    Registrar "ERRO" "Falha ao copiar a dll para a pasta do Steam"
     Registrar "ERRO" $_.Exception.Message
 }
 
 # ===================== LIMPEZA =====================
 Start-Sleep -Seconds 2
 Registrar "INFO" "Removendo arquivos temporários..."
-Remove-Item -Path $ArquivoCLI -Force -ErrorAction SilentlyContinue
-Remove-Item -Path $ArquivoDLL -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $CliFile -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $DllFile -Force -ErrorAction SilentlyContinue
 Registrar "OK" "Arquivos temporários removidos"
 
 Write-Host ""
 
 # ===================== FINALIZAÇÃO =====================
-Write-Host " ==========================================" -ForegroundColor DarkGreen
 Registrar "OK" "Operação concluída com sucesso!"
-Registrar "AVISO" "A inicialização do Steam pode demorar mais que o normal na primeira vez."
-Write-Host " ==========================================" -ForegroundColor DarkGreen
+Registrar "AVISO" "A inicialização do Steam pode demorar um pouco mais do que o normal."
 Write-Host ""
 
-$executavel = Join-Path $steam "steam.exe"
-if (Test-Path $executavel) {
+$exe = Join-Path $steam "steam.exe"
+if (Test-Path $exe) {
     Registrar "INFO" "Iniciando o Steam..."
-    Start-Process $executavel -ArgumentList "-clearbeta"
+    Start-Process $exe -ArgumentList "-clearbeta"
 }
 
-Write-Host ""
-Write-Host " Obrigado por usar a Green Store!" -ForegroundColor Green
-Write-Host " Suporte: suporte@greenstore.com.br" -ForegroundColor DarkGreen
 Write-Host ""
 Registrar "INFO" "Pressione qualquer tecla para fechar esta janela..."
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
